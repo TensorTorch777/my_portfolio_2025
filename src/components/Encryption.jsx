@@ -39,7 +39,13 @@ const Encryption = ({ onOpenChat }) => {
 
                 <div
                     className="encryption-badge glass-panel"
-                    onClick={onOpenChat}
+                    onClick={() => {
+                        if (window.innerWidth < 768) {
+                            window.location.href = "/nancy";
+                        } else {
+                            onOpenChat();
+                        }
+                    }}
                     style={{ cursor: 'pointer' }}
                 >
                     <span className="encryption-text">Talk with Nancy!</span>

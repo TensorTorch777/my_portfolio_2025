@@ -4,6 +4,7 @@ import { X, Send, Sparkles } from 'lucide-react';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NANCY_SYSTEM_PROMPT } from '../constants/nancyPrompt';
 import ReactMarkdown from 'react-markdown';
+import ReactDOM from 'react-dom';
 
 // Initialize Gemini API outside component
 // Use environment variable if available, otherwise user needs to provide their own key
@@ -15,7 +16,7 @@ const model = genAI ? genAI.getGenerativeModel({
     systemInstruction: NANCY_SYSTEM_PROMPT
 }) : null;
 
-const Nancy = ({ isOpen, onClose }) => {
+const Nancy = ({ isOpen, onClose, portal = true }) => {
     const [messages, setMessages] = useState([
         { text: "Hi! I'm Nancy. Ready to explore Nimish's world?", sender: 'nancy' }
     ]);
@@ -23,6 +24,11 @@ const Nancy = ({ isOpen, onClose }) => {
     const [isTyping, setIsTyping] = useState(false);
     const [isSending, setIsSending] = useState(false); // Lock to prevent double-firing
     const [characterState, setCharacterState] = useState('IDLE'); // IDLE, THINKING, TALKING
+    const [suggestedQuestions, setSuggestedQuestions] = useState([
+        "Where did Nimish work last?",
+        "Tell me about his NotesQuest project.",
+        "What are his top skills?"
+    ]);
     const videoRef = useRef(null);
     const messagesEndRef = useRef(null);
 
@@ -64,18 +70,9 @@ const Nancy = ({ isOpen, onClose }) => {
         }
     };
 
-    const SUGGESTED_QUESTIONS = [
-        "Where did Nimish work last?",
-        "Tell me about his NotesQuest project.",
-        "What are his top skills?"
-    ];
-
-    const handleChipClick = (question) => {
-        setInput(question);
-        // Optional: Auto-send
-        // handleSend(); 
-        // For now, let's just populate the input so user can hit enter, 
-        // or we can refactor handleSend to accept an argument.
+    const handleSuggestionClick = (q) => {
+        setSuggestedQuestions(prev => prev.filter(sq => sq !== q));
+        handleSend(q);
     };
 
     // Refactor handleSend to accept optional message
@@ -134,120 +131,134 @@ const Nancy = ({ isOpen, onClose }) => {
         if (e.key === 'Enter') handleSend();
     };
 
-    return (
-        <AnimatePresence>
-            {isOpen && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="aaa-nancy-overlay"
-                >
-                    {/* Close Button */}
-                    <button onClick={onClose} className="aaa-close-btn">
-                        <X size={24} />
-                    </button>
+    // Prevent background scroll when chat is open
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [isOpen]);
 
-                    {/* Character Container */}
-                    <motion.div
-                        className="aaa-character-container"
-                        initial={{ x: 100, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        exit={{ x: 100, opacity: 0 }}
-                        transition={{ type: "spring", stiffness: 50 }}
-                    >
-                        <video
-                            ref={videoRef}
-                            src={getVideoSource()}
-                            autoPlay
-                            loop
-                            muted
-                            playsInline
-                            className="aaa-character-img" // Reusing class for sizing
-                            onError={(e) => {
-                                e.target.style.display = 'none'; // Hide video on error
-                                e.target.nextSibling.style.display = 'block'; // Show fallback image
-                            }}
-                        />
-                        <img
-                            src="/nancy_full_body.png"
-                            alt="Nancy"
-                            className="aaa-character-img"
-                            style={{ display: 'none' }} // Hidden by default, shown on error
-                        />
-                    </motion.div>
-
-                    {/* Dialogue Area */}
-                    <motion.div
-                        className="aaa-dialogue-area"
-                        initial={{ y: 100, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ y: 100, opacity: 0 }}
-                    >
-                        {/* Messages */}
-                        <div className="aaa-messages-scroll">
-                            {messages.map((msg, index) => (
-                                <motion.div
-                                    key={index}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className={`aaa-message-bubble ${msg.sender}`}
-                                >
-                                    {msg.sender === 'nancy' && <div className="aaa-speaker-name">Nancy</div>}
-                                    {msg.sender === 'nancy' ? (
-                                        <ReactMarkdown>{msg.text}</ReactMarkdown>
-                                    ) : (
-                                        msg.text
-                                    )}
-                                </motion.div>
-                            ))}
-                            {isTyping && (
-                                <div className="aaa-message-bubble nancy typing">
-                                    <div className="aaa-speaker-name">Nancy</div>
-                                    <span>.</span><span>.</span><span>.</span>
-                                </div>
+    // Now use a portal so the overlay always covers the screen and isn't clipped
+    const nancyModal = (
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="aaa-nancy-overlay"
+          >
+            {/* Close Button */}
+            <button onClick={onClose} className="aaa-close-btn">
+                <X size={24} />
+            </button>
+            {/* Dialogue Area (Left on Desktop) */}
+            <motion.div
+                className="aaa-dialogue-area"
+                initial={{ y: 100, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 100, opacity: 0 }}
+            >
+                {/* Messages */}
+                <div className="aaa-messages-scroll">
+                    {messages.map((msg, index) => (
+                        <motion.div
+                            key={index}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className={`aaa-message-bubble ${msg.sender}`}
+                        >
+                            {msg.sender === 'nancy' && <div className="aaa-speaker-name">Nancy</div>}
+                            {msg.sender === 'nancy' ? (
+                                <ReactMarkdown>{msg.text}</ReactMarkdown>
+                            ) : (
+                                msg.text
                             )}
-                            <div ref={messagesEndRef} />
+                        </motion.div>
+                    ))}
+                    {isTyping && (
+                        <div className="aaa-message-bubble nancy typing">
+                            <div className="aaa-speaker-name">Nancy</div>
+                            <span>.</span><span>.</span><span>.</span>
                         </div>
-
-                        {/* Suggestion Chips */}
-                        <div className="aaa-suggestion-chips">
-                            {SUGGESTED_QUESTIONS.map((q, idx) => (
-                                <button
-                                    key={idx}
-                                    className="aaa-chip"
-                                    onClick={() => handleSend(q)}
-                                >
-                                    {q}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Input Bar */}
-                        <div className="aaa-input-container">
-                            <input
-                                type="text"
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                onKeyPress={handleKeyPress}
-                                placeholder="Type your message..."
-                                className="aaa-input"
-                                autoFocus
-                            />
-                            <button
-                                type="button"
-                                onClick={() => handleSend()}
-                                onTouchEnd={e => { e.preventDefault(); handleSend(); }}
-                                className="aaa-send-btn"
-                            >
-                                <Send size={20} />
-                            </button>
-                        </div>
-                    </motion.div>
-                </motion.div>
-            )}
-        </AnimatePresence>
+                    )}
+                    <div ref={messagesEndRef} />
+                </div>
+                {/* Suggestion Chips */}
+                {suggestedQuestions.length > 0 &&
+                <div className="aaa-suggestion-chips">
+                    {suggestedQuestions.map((q, idx) => (
+                        <button
+                            key={idx}
+                            className="aaa-chip"
+                            onClick={() => handleSuggestionClick(q)}
+                        >
+                            {q}
+                        </button>
+                    ))}
+                </div>}
+                {/* Input Bar */}
+                <div className="aaa-input-container">
+                    <input
+                        type="text"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        placeholder="Type your message..."
+                        className="aaa-input"
+                        autoFocus
+                    />
+                    <button
+                        type="button"
+                        onClick={() => handleSend()}
+                        onTouchEnd={e => { e.preventDefault(); handleSend(); }}
+                        className="aaa-send-btn"
+                    >
+                        <Send size={20} />
+                    </button>
+                </div>
+            </motion.div>
+            {/* Character Container (Right on Desktop) */}
+            <motion.div
+              className="aaa-character-container"
+              initial={{ x: 100, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 100, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 50 }}
+            >
+                <video
+                    ref={videoRef}
+                    src={getVideoSource()}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="aaa-character-img"
+                    style={{ width: '100vw', height: '100vh', objectFit: 'cover' }}
+                    onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'block';
+                    }}
+                />
+                <img
+                    src="/nancy_full_body.png"
+                    alt="Nancy"
+                    className="aaa-character-img"
+                    style={{ display: 'none', width: '100vw', height: '100vh', objectFit: 'cover' }}
+                />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     );
+
+    if (!portal) return nancyModal;
+    return ReactDOM.createPortal(nancyModal, document.body);
 };
 
 export default Nancy;
