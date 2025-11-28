@@ -6,11 +6,14 @@ import { NANCY_SYSTEM_PROMPT } from '../constants/nancyPrompt';
 import ReactMarkdown from 'react-markdown';
 
 // Initialize Gemini API outside component
-const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({
+// Use environment variable if available, otherwise user needs to provide their own key
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+
+const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
+const model = genAI ? genAI.getGenerativeModel({
     model: "gemini-2.0-flash",
     systemInstruction: NANCY_SYSTEM_PROMPT
-});
+}) : null;
 
 const Nancy = ({ isOpen, onClose }) => {
     const [messages, setMessages] = useState([
@@ -79,6 +82,19 @@ const Nancy = ({ isOpen, onClose }) => {
     const handleSend = async (messageOverride) => {
         const messageToSend = messageOverride || input;
         if (!messageToSend.trim() || isSending) return; // Prevent double-firing
+
+        // Check if API key is configured
+        if (!model) {
+            setMessages(prev => [...prev,
+            { text: messageToSend, sender: 'user' },
+            {
+                text: "Nancy is currently unavailable. To use the AI chatbot:\n\n1. Get a free API key from [Google AI Studio](https://aistudio.google.com/app/apikey)\n2. Create a `.env` file in the project root\n3. Add: `VITE_GEMINI_API_KEY=your_api_key_here`\n4. Restart the dev server\n\nSorry for the inconvenience!",
+                sender: 'nancy'
+            }
+            ]);
+            setInput('');
+            return;
+        }
 
         setIsSending(true); // Lock
 
@@ -218,7 +234,12 @@ const Nancy = ({ isOpen, onClose }) => {
                                 className="aaa-input"
                                 autoFocus
                             />
-                            <button onClick={handleSend} className="aaa-send-btn">
+                            <button
+                                type="button"
+                                onClick={() => handleSend()}
+                                onTouchEnd={e => { e.preventDefault(); handleSend(); }}
+                                className="aaa-send-btn"
+                            >
                                 <Send size={20} />
                             </button>
                         </div>

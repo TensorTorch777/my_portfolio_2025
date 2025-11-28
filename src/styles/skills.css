@@ -71,3 +71,25 @@
     height: auto;
     object-fit: cover;
 }
+
+/* Extra responsiveness for skills section */
+@media (max-width: 600px) {
+  .skills-row {
+    gap: 0.65rem;
+    flex-wrap: wrap;
+    max-width: 98vw;
+  }
+  .skills-title {
+    font-size: 19px;
+  }
+}
+
+@media (max-width: 480px) {
+  .skills-row {
+    gap: 0.3rem;
+  }
+  .skills-title {
+    font-size: 15px;
+    margin-bottom: 6px;
+  }
+}

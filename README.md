@@ -75,6 +75,43 @@ npm run build
 npm run preview
 ```
 
+## Deployment
+
+### Deploy to Vercel (Recommended)
+
+1. Push your code to GitHub
+2. Visit [Vercel](https://vercel.com) and sign in with GitHub
+3. Click "New Project" and import your repository
+4. Configure environment variables:
+   - Go to Project Settings > Environment Variables
+   - Add: `VITE_GEMINI_API_KEY` with your API key value
+   - Apply to Production, Preview, and Development environments
+5. Deploy
+
+The Nancy AI chatbot will work immediately on your deployed site.
+
+### Deploy to Netlify
+
+1. Push your code to GitHub
+2. Visit [Netlify](https://netlify.com) and sign in with GitHub
+3. Click "Add new site" > "Import an existing project"
+4. Select your repository
+5. Build settings:
+   - Build command: `npm run build`
+   - Publish directory: `dist`
+6. Add environment variables:
+   - Go to Site settings > Environment variables
+   - Add: `VITE_GEMINI_API_KEY` with your API key value
+7. Deploy
+
+### Important Notes for Deployment
+
+- The `.env` file is not pushed to GitHub (it's in `.gitignore`)
+- You must configure `VITE_GEMINI_API_KEY` in your deployment platform's environment variables
+- Nancy will show setup instructions to local developers who clone without an API key
+- Your deployed site will have Nancy fully functional for all visitors
+
+
 ## Project Structure
 
 ```
